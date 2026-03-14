@@ -1,10 +1,18 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
 
   let searchTerm = $state("");
   let results = $state<any[]>([]);
   let loading = $state(false);
   let debounceTimer: ReturnType<typeof setTimeout>;
+  let roastCount = $state<number | null>(null);
+
+  onMount(async () => {
+    const res = await fetch("/api/count");
+    const data = await res.json();
+    roastCount = data.count;
+  });
 
   function onInput() {
     clearTimeout(debounceTimer);
@@ -69,6 +77,9 @@
       {/if}
     </div>
 
+    {#if roastCount !== null && roastCount > 0}
+      <p class="counter">🔥 {roastCount.toLocaleString()} athletes roasted</p>
+    {/if}
     <p class="disclaimer">2026 CrossFit Open · Powered by AI brutality</p>
   </div>
 </main>
@@ -228,6 +239,13 @@
   .result-meta {
     font-size: 0.75rem;
     color: #666;
+  }
+
+  .counter {
+    font-size: 0.8rem;
+    color: #e50914;
+    margin: 0 0 0.5rem;
+    font-weight: 600;
   }
 
   .disclaimer {

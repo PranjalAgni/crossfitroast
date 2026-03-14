@@ -58,6 +58,158 @@
     if (scaled === "2") return "Foundations";
     return "Rx";
   }
+
+  function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const test = current ? `${current} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+
+  async function shareRoast() {
+    const W = 1080;
+    const PAD = 80;
+    const ROAST_FONT = "italic 30px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    const LINE_H = 48;
+    const ROAST_INNER_PAD = 30;
+
+    // Measure roast lines on a scratch canvas first so we can size the real canvas
+    const scratch = document.createElement("canvas");
+    scratch.width = W;
+    const sCtx = scratch.getContext("2d")!;
+    sCtx.font = ROAST_FONT;
+    const roastLines = wrapText(sCtx, roast, W - PAD * 2 - ROAST_INNER_PAD * 2);
+
+    const ROAST_CARD_TOP = 560;
+    const ROAST_TITLE_H = 70; // space for "THE ROAST" label
+    const roastCardHeight = ROAST_TITLE_H + roastLines.length * LINE_H + ROAST_INNER_PAD * 2;
+    const H = ROAST_CARD_TOP + roastCardHeight + 100; // 100 for footer
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+
+    // Background
+    ctx.fillStyle = "#141414";
+    ctx.fillRect(0, 0, W, H);
+
+    // Red left accent bar
+    ctx.fillStyle = "#e50914";
+    ctx.fillRect(0, 0, 10, H);
+
+    // Branding
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 52px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    ctx.letterSpacing = "6px";
+    ctx.fillText("CROSSFIT", PAD, 100);
+    const cfWidth = ctx.measureText("CROSSFIT").width;
+    ctx.fillStyle = "#e50914";
+    ctx.fillText("ROAST", PAD + cfWidth + 10, 100);
+    ctx.letterSpacing = "0px";
+
+    // Divider
+    ctx.fillStyle = "#2a2a2a";
+    ctx.fillRect(PAD, 120, W - PAD * 2, 1);
+
+    // Flag + name
+    const flag = toFlagEmoji(athleteData.entrant.countryOfOriginCode);
+    ctx.font = "72px serif";
+    ctx.fillText(flag, PAD, 220);
+
+    const name = athleteData.entrant.competitorName;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = name.length > 18
+      ? "bold 48px 'Helvetica Neue', Helvetica, Arial, sans-serif"
+      : "bold 64px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    ctx.fillText(name, PAD, 310);
+
+    ctx.fillStyle = "#666666";
+    ctx.font = "32px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    const meta = [athleteData.entrant.affiliateName, athleteData.entrant.countryOfOriginName, `Age ${athleteData.entrant.age}`]
+      .filter(Boolean)
+      .join("  ·  ");
+    ctx.fillText(meta, PAD, 360);
+
+    // Stats row
+    const stats = [
+      { val: `#${parseInt(athleteData.overallRank).toLocaleString()}`, lbl: "Global", red: true },
+      { val: `Top ${percentile(athleteData.overallRank, totalCompetitors)}%`, lbl: "Worldwide", red: false },
+      { val: `#${countryRank}`, lbl: `${flag} Country`, red: true },
+    ];
+    const statW = (W - PAD * 2) / stats.length;
+    stats.forEach((s, i) => {
+      const x = PAD + i * statW;
+      const y = 420;
+      ctx.fillStyle = "#1f1f1f";
+      ctx.beginPath();
+      ctx.roundRect(x, y, statW - 16, 110, 4);
+      ctx.fill();
+
+      ctx.fillStyle = s.red ? "#e50914" : "#ffffff";
+      ctx.font = "bold 40px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+      ctx.fillText(s.val, x + 20, y + 58);
+
+      ctx.fillStyle = "#555555";
+      ctx.font = "22px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+      ctx.fillText(s.lbl.toUpperCase(), x + 20, y + 92);
+    });
+
+    // Roast card background (height sized to content)
+    ctx.fillStyle = "#1f1f1f";
+    ctx.beginPath();
+    ctx.roundRect(PAD, ROAST_CARD_TOP, W - PAD * 2, roastCardHeight, [0, 4, 4, 0]);
+    ctx.fill();
+
+    // Red left accent on roast card
+    ctx.fillStyle = "#e50914";
+    ctx.fillRect(PAD, ROAST_CARD_TOP, 4, roastCardHeight);
+
+    // "THE ROAST" label
+    ctx.fillStyle = "#555555";
+    ctx.font = "bold 22px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    ctx.letterSpacing = "3px";
+    ctx.fillText("THE ROAST", PAD + ROAST_INNER_PAD, ROAST_CARD_TOP + 48);
+    ctx.letterSpacing = "0px";
+
+    // Roast text — all lines
+    ctx.fillStyle = "#cccccc";
+    ctx.font = ROAST_FONT;
+    const textStartY = ROAST_CARD_TOP + ROAST_TITLE_H + ROAST_INNER_PAD;
+    roastLines.forEach((line, i) => {
+      ctx.fillText(line, PAD + ROAST_INNER_PAD, textStartY + i * LINE_H);
+    });
+
+    // Footer
+    ctx.fillStyle = "#333333";
+    ctx.font = "26px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+    ctx.fillText("crossfitroast.vercel.app", PAD, H - 40);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], "crossfitroast.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `CrossFitRoast — ${athleteData.entrant.competitorName}` });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "crossfitroast.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }, "image/png");
+  }
 </script>
 
 <main>
@@ -156,6 +308,12 @@
           </div>
         {:else if roast}
           <blockquote class="roast-text">{roast}</blockquote>
+          <button class="share-btn" onclick={shareRoast}>
+            <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+              <path d="M15 8a3 3 0 1 0-2.977-2.63l-4.94 2.47a3 3 0 1 0 0 4.319l4.94 2.47a3 3 0 1 0 .895-1.789l-4.94-2.47a3.027 3.027 0 0 0 0-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" fill="currentColor"/>
+            </svg>
+            Share Roast
+          </button>
         {/if}
       </div>
     </div>
@@ -415,6 +573,32 @@
     line-height: 1.8;
     color: #ccc;
     font-style: italic;
+  }
+
+  .share-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #e50914;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .share-btn:hover {
+    background: #c0070f;
+  }
+
+  .share-btn:active {
+    background: #a0050c;
   }
 
   /* Spinner */
