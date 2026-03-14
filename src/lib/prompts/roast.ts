@@ -1,6 +1,6 @@
 import type { LeaderboardRow } from "$lib/crossfit/types";
 import type { Message } from "$lib/ai/client";
-import { getWod } from "$lib/crossfit/wods";
+import { getWod, WODS_2026 } from "$lib/crossfit/wods";
 
 const SYSTEM_PROMPT = `You are a savage but hilarious CrossFit roast comedian. You know CrossFit culture inside out — the movements, the suffering, the ego, the chalk-covered hands, the Instagram posts. Your roasts are funny first, brutal second. You pick 2-3 angles and go deep on them rather than listing every stat. You mix CrossFit knowledge with everyday humor. You sound like a friend who knows too much about your fitness and won't let you forget it. Never generic, always punchy.
 
@@ -42,7 +42,15 @@ export function buildRoastMessages(
     })
     .join("\n");
 
-  const userPrompt = `ROAST THIS ATHLETE. Be funny and punchy — pick a couple of angles and have fun with them. Don't just list stats.
+  const wodContext = WODS_2026.map(
+    (w) => `${w.name}:\n${w.description}\nRx standards: ${w.rxStandards}`
+  ).join("\n\n");
+
+  const userPrompt = `2026 CrossFit Open WODs:
+${wodContext}
+
+---
+ROAST THIS ATHLETE. Be funny and punchy — pick a couple of angles and have fun with them. Don't just list stats.
 
 Athlete: ${entrant.competitorName}
 Age: ${entrant.age}
