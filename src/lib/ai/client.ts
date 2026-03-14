@@ -7,13 +7,8 @@ export interface Message {
 
 export async function callAI(
   messages: Message[],
-  model = "claude-sonnet-4-20250514"
+  model = "gpt-4o"
 ): Promise<string> {
-  console.log("\n=== AI PROMPT ===");
-  console.log("Model:", model);
-  messages.forEach((m, i) => console.log(`\n[${i + 1}] ${m.role.toUpperCase()}:\n${m.content}`));
-  console.log("\n=================\n");
-
   const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
     headers: {
