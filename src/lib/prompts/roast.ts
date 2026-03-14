@@ -42,15 +42,12 @@ export function buildRoastMessages(
     })
     .join("\n");
 
-  const wodContext = WODS_2026.map(
-    (w) => `${w.name}:\n${w.description}\nRx standards: ${w.rxStandards}`
-  ).join("\n\n");
+  const includeWods = Math.random() < 0.4;
+  const wodContext = includeWods
+    ? `2026 CrossFit Open WODs:\n${WODS_2026.map((w) => `${w.name}:\n${w.description}\nRx standards: ${w.rxStandards}`).join("\n\n")}\n\n---\n`
+    : "";
 
-  const userPrompt = `2026 CrossFit Open WODs:
-${wodContext}
-
----
-ROAST THIS ATHLETE. Be funny and punchy — pick a couple of angles and have fun with them. Don't just list stats.
+  const userPrompt = `${wodContext}ROAST THIS ATHLETE. Be funny and punchy — pick a couple of angles and have fun with them. Don't just list stats.
 
 Athlete: ${entrant.competitorName}
 Age: ${entrant.age}
